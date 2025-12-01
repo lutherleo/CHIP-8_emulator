@@ -247,6 +247,8 @@ void chip8_execute(Chip8 *chip8, uint16_t opcode) {
     else if((opcode & 0xF000) == 0xF000) {
         uint8_t nn = opcode & 0x00FF;
         uint8_t x = (opcode & 0x0F00) >> 8;
+        int i;
+        int key_pressed;
         switch(nn) {
             case 0x7:
                 chip8->V[x] = chip8->delay_timer;
@@ -268,20 +270,54 @@ void chip8_execute(Chip8 *chip8, uint16_t opcode) {
                 chip8->memory[chip8->I +1] = (chip8->V[x]/10)%10;
                 chip8->memory[chip8->I +2] = chip8->V[x]%10;
                 break;
-            /*case 0x55:
-                uint8_t i = 0;
+            case 0x55:
+                i = 0;
                 while(i<=x){
-                    chip8->memory[chip8->I + i] =
+                    chip8->memory[chip8->I + i] = chip8->V[i];
+                    i++;
                 }
                 break;
             case 0x65:
-
+                i = 0;
+                while(i<=x){
+                    chip8->V[i] = chip8->memory[chip8->I + i]; 
+                    i++;
+                }
                 break;
-            case 0x0A:
+            case 0x0A: // i dont get this
+                // Check if any key is pressed
+                int key_pressed = -1;  // -1 means no key pressed yet
+                for (i = 0; i < 16; i++) {
+                    if (chip8->keypad[i]) {
+                        key_pressed = i;
+                        break;
+                    }
+                }
 
+                if (key_pressed != -1) {
+                    // A key was pressed! Store it and continue
+                    chip8->V[x] = key_pressed;
+                } else {
+                    // No key pressed yet - repeat this instruction
+                    chip8->pc -= 2;  // Go back 2 bytes to re-execute this opcode
+                }
                 break;
-        }*/
+        }
 
+    }
+    else if ((opcode & 0xF0FF) == 0xE09E) {
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        uint8_t key = chip8->V[x];
+        if (chip8->keypad[key]) {
+            chip8->pc += 2; //skip next instruction
+        }
+    }
+    else if ((opcode & 0xF0FF) == 0xE0A1) {
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        uint8_t key = chip8->V[x];
+        if (!chip8->keypad[key]) {
+            chip8->pc += 2; //skip next instruction
+        }
     }
 
 }
