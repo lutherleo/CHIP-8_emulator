@@ -3,6 +3,11 @@
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
+#include <SDL2/SDL.h>
+
+#define SCALE 10  // Each CHIP-8 pixel will be 10x10 screen pixels
+#define WINDOW_WIDTH (DISPLAY_WIDTH * SCALE)
+#define WINDOW_HEIGHT (DISPLAY_HEIGHT * SCALE)
 
 // CHIP-8 has a 64x32 monochrome display
 #define DISPLAY_WIDTH 64
@@ -41,6 +46,13 @@ typedef struct {
     uint8_t sp;                     // Stack pointer
     uint8_t keypad[16];             // Keypad state (0-F)
 } Chip8;
+
+//SDL
+typedef struct {
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    SDL_Texture *texture;
+} SDLContext;
 
 //called a prototype so it is called sooner.
 void chip8_execute(Chip8 *chip8, uint16_t opcode);
@@ -319,7 +331,44 @@ void chip8_execute(Chip8 *chip8, uint16_t opcode) {
             chip8->pc += 2; //skip next instruction
         }
     }
+    else if ((opcode & 0xF000) == 0xD000){
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        uint8_t y = (opcode & 0x00F0) >> 4;
+        uint8_t n = (opcode & 0x000F);
+        chip8->V[0xF] = 0;
+        int i,sprite_byte;
+        for(i=0;i < n; i++){
+            sprite_byte = chip8->memory[chip8->I + i];
+            for(int j=0; j < 8; j++){
+                if (sprite_byte & (0x80 >> j)){
+                    uint8_t x_pos = (chip8->V[x] + j) % 64;
+                    uint8_t y_pos = (chip8->V[y] + i) % 32;
 
+                    int pixel_index = y_pos * 64 + x_pos;
+
+                    if (chip8->display[pixel_index] == 1) {
+                        chip8->V[0xF] = 1;  // Collision detected!
+                    }
+
+                    chip8->display[pixel_index] ^= 1;
+                }
+            }
+        } 
+    }
+
+}
+
+int sdl_init(SDLContext *sdl) {
+    // Initialize SDL
+    // Create window
+    // Create renderer
+    // Create texture for the display
+    // Return 1 on success, 0 on failure
+}
+
+void sdl_cleanup(SDLContext *sdl) {
+    // Destroy texture, renderer, window
+    // Quit SDL
 }
 
 int main(int argc, char *argv[]) {
