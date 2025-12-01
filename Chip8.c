@@ -124,6 +124,61 @@ void chip8_execute(Chip8 *chip8, uint16_t opcode) {
     if (opcode == 0x00E0) {
         memset(chip8->display, 0, sizeof(chip8->display));
     }
+    else if ((opcode & 0xF000) == 0x6000) {
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        uint8_t nn = opcode & 0x00FF;
+        chip8->V[x] = nn; 
+    }
+    else if ((opcode & 0xF000) == 0x7000) {
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        uint8_t nn = opcode & 0x00FF;
+        chip8->V[x] += nn;
+    }
+    else if ((opcode & 0xF000) == 0x1000) {
+        uint16_t nnn = opcode & 0x0FFF;
+        chip8->pc = nnn; //we incremented pc by 2 in fetch, so we jump by setting nnn.
+    }
+    else if ((opcode & 0xF000) == 0x2000) { // to jump to subroutine
+        uint16_t nnn = opcode & 0x0FFF;
+        chip8->stack[chip8->sp] = chip8->pc;
+        chip8->sp++;
+        chip8->pc = nnn;
+    }
+    else if (opcode == 0x00EE) {
+        chip8->sp--;
+        chip8->pc = chip8->stack[chip8->sp];
+    }
+    else if ((opcode & 0xF000) == 0x3000) { //skipping
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        uint8_t nn = opcode & 0x00FF;
+        if (chip8->V[x]  == nn) {
+            chip8->pc += 2;             
+        }
+    }
+    else if ((opcode & 0xF000) == 0x4000) {
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        uint8_t nn = opcode & 0x00FF;
+        if (chip8->V[x] != nn) {
+            chip8->pc += 2;             
+        }
+    }
+    else if ((opcode & 0xF00F) == 0x5000) {
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        uint8_t y = (opcode & 0x00F0) >> 4;
+        if (chip8->V[x] == chip8->V[y]) {
+            chip8->pc += 2;             
+        }
+    }
+    else if ((opcode & 0xF00F) == 0x9000) {
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        uint8_t y = (opcode & 0x00F0) >> 4;
+        if (chip8->V[x] != chip8->V[y]) {
+            chip8->pc += 2;             
+        }
+    }
+    else if((opcode & 0xF000) == 0x8000) {
+        
+    }
 }
 
 int main(int argc, char *argv[]) {
