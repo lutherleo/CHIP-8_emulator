@@ -177,7 +177,59 @@ void chip8_execute(Chip8 *chip8, uint16_t opcode) {
         }
     }
     else if((opcode & 0xF000) == 0x8000) {
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        uint8_t y = (opcode & 0x00F0) >> 4;
+        uint8_t z = opcode & 0x000F;
         
+        switch (z) {
+            case 0:
+                chip8->V[x] = chip8->V[y];
+            break;
+            case 1:
+                chip8->V[x] = (chip8->V[x]) | (chip8->V[y]);
+            break;
+            case 2:
+                chip8->V[x] = (chip8->V[x]) & (chip8->V[y]);
+            break;
+            case 3:
+                chip8->V[x] = (chip8->V[x]) ^ (chip8->V[y]);
+            break;
+            case 4:
+                uint16_t sum = chip8->V[x] + chip8->V[y];  
+                chip8->V[0xF] = (sum > 255) ? 1 : 0;      
+                chip8->V[x] = sum & 0xFF; 
+            break;
+            case 5:
+            /*uint8_t sub;    
+            if(chip8->V[x] < chip8->V[y]){
+                    sub = chip8->V[x] - chip8->V[y] + 0xFF;
+                    chip8->V[0xF] = 0x0;
+                }
+            else if(chip8->V[x] > chip8->V[y]){
+                    sub = chip8->V[x] - chip8->V[y];
+                    chip8->V[0xF] = 0x1;
+            } */
+            chip8->V[0xF] = (chip8->V[x] >= chip8->V[y]) ? 1 : 0;
+            chip8->V[x] = chip8->V[x] - chip8->V[y];
+            break;
+            case 6:
+                chip8->V[0xF] = chip8->V[x] & 0x01;
+                chip8->V[x] = chip8->V[x]>>1;
+            break;
+            case 7:
+            /*uint8_t sub;    
+            if(chip8->V[y] < chip8->V[x]){
+                    sub = chip8->V[y] - chip8->V[x] + 0xFF;
+                    chip8->V[0xF] = 0x0;
+                }
+            else if(chip8->V[y] > chip8->V[x]){
+                    sub = chip8->V[y] - chip8->V[x];
+                    chip8->V[0xF] = 0x1;
+            } */   
+            chip8->V[0xF] = (chip8->V[y] >= chip8->V[x]) ? 1 : 0;  
+            chip8->V[x] = chip8->V[y] - chip8->V[x];
+            break;
+        }
     }
 }
 
