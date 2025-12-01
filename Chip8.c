@@ -231,6 +231,59 @@ void chip8_execute(Chip8 *chip8, uint16_t opcode) {
             break;
         }
     }
+    else if((opcode & 0xF000) == 0xA000) {
+        uint16_t nnn = opcode & 0x0FFF;
+        chip8->I = nnn;
+    }
+    else if((opcode & 0xF000) == 0xB000) {
+        uint16_t nnn = opcode & 0x0FFF;
+        chip8->pc = nnn + chip8->V[0];
+    }
+    else if((opcode & 0xF000) == 0xC000) {
+        uint8_t nn = opcode & 0x00FF;
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        chip8->V[x] = (rand()%255) & nn; 
+    }
+    else if((opcode & 0xF000) == 0xF000) {
+        uint8_t nn = opcode & 0x00FF;
+        uint8_t x = (opcode & 0x0F00) >> 8;
+        switch(nn) {
+            case 0x7:
+                chip8->V[x] = chip8->delay_timer;
+                break;
+            case 0x15:
+                chip8->delay_timer = chip8->V[x];
+                break;
+            case 0x18:
+                chip8->sound_timer = chip8->V[x];
+                break;
+            case 0x1E:
+                chip8->I += chip8->V[x];
+                break;
+            case 0x29:
+                chip8->I = chip8->V[x] * 5; //cuz character is 5 bytes tall
+                break;
+            case 0x33:
+                chip8->memory[chip8->I] = chip8->V[x]/100;       
+                chip8->memory[chip8->I +1] = (chip8->V[x]/10)%10;
+                chip8->memory[chip8->I +2] = chip8->V[x]%10;
+                break;
+            /*case 0x55:
+                uint8_t i = 0;
+                while(i<=x){
+                    chip8->memory[chip8->I + i] =
+                }
+                break;
+            case 0x65:
+
+                break;
+            case 0x0A:
+
+                break;
+        }*/
+
+    }
+
 }
 
 int main(int argc, char *argv[]) {
