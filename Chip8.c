@@ -56,6 +56,8 @@ typedef struct {
 
 //called a prototype so it is called sooner.
 void chip8_execute(Chip8 *chip8, uint16_t opcode);
+int sdl_init(SDLContext *sdl);
+void sdl_cleanup(SDLContext *sdl);
 
 // Initialize the CHIP-8 system
 void chip8_init(Chip8 *chip8) {
@@ -360,15 +362,62 @@ void chip8_execute(Chip8 *chip8, uint16_t opcode) {
 
 int sdl_init(SDLContext *sdl) {
     // Initialize SDL
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+    return 0; 
+    }
     // Create window
+    sdl->window = SDL_CreateWindow(
+    "CHIP-8 Emulator",           // Window title
+    SDL_WINDOWPOS_CENTERED,      // X position (centered)
+    SDL_WINDOWPOS_CENTERED,      // Y position (centered)
+    WINDOW_WIDTH,                // Width
+    WINDOW_HEIGHT,               // Height
+    SDL_WINDOW_SHOWN             // Flags
+    );
+
+    if (!sdl->window) {
+        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 0;
+    }
     // Create renderer
+    sdl->renderer = SDL_CreateRenderer(
+    sdl->window,                 // The window to render to
+    -1,                          // Driver index (-1 = first available)
+    SDL_RENDERER_ACCELERATED     // Use hardware acceleration
+    );
+
+    if (!sdl->renderer) {
+        printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
+        SDL_DestroyWindow(sdl->window);
+        SDL_Quit();
+        return 0;
+    }
     // Create texture for the display
-    // Return 1 on success, 0 on failure
+    sdl->texture = SDL_CreateTexture(
+    sdl->renderer,
+    SDL_PIXELFORMAT_RGBA8888,    // Pixel format (32-bit RGBA)
+    SDL_TEXTUREACCESS_STREAMING, // We'll update it every frame
+    DISPLAY_WIDTH,               // 64 pixels wide
+    DISPLAY_HEIGHT               // 32 pixels tall
+    );
+
+    if (!sdl->texture) {
+        printf("Texture could not be created! SDL_Error: %s\n", SDL_GetError());
+        SDL_DestroyRenderer(sdl->renderer);
+        SDL_DestroyWindow(sdl->window);
+        SDL_Quit();
+        return 0;
+    }
+    return 1;
 }
 
 void sdl_cleanup(SDLContext *sdl) {
-    // Destroy texture, renderer, window
-    // Quit SDL
+    SDL_DestroyTexture(sdl->texture);
+    SDL_DestroyRenderer(sdl->renderer);
+    SDL_DestroyWindow(sdl->window);
+    SDL_Quit();
 }
 
 int main(int argc, char *argv[]) {
