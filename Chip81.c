@@ -58,7 +58,7 @@ typedef struct {
 void chip8_execute(Chip8 *chip8, uint16_t opcode);
 int sdl_init(SDLContext *sdl);
 void sdl_cleanup(SDLContext *sdl);
-void chip8_render(Chip8 *chip8, SDLContext *sdl)
+void chip8_render(Chip8 *chip8, SDLContext *sdl);
 
 // Initialize the CHIP-8 system
 void chip8_init(Chip8 *chip8) {
@@ -117,9 +117,8 @@ void chip8_cycle(Chip8 *chip8) {
     // Fetch instruction
     uint16_t opcode = chip8_fetch(chip8);
     
-    // Decode and execute instruction
-    // We'll implement this next!
-    printf("Opcode: 0x%04X\n", opcode);
+    // Execute instruction
+    chip8_execute(chip8, opcode);
     
     // Update timers
     if (chip8->delay_timer > 0) {
@@ -127,12 +126,8 @@ void chip8_cycle(Chip8 *chip8) {
     }
     
     if (chip8->sound_timer > 0) {
-        if (chip8->sound_timer == 1) {
-            printf("BEEP!\n");
-        }
         chip8->sound_timer--;
     }
-    chip8_execute(chip8, opcode);
 }
 //Clear display function
 void chip8_execute(Chip8 *chip8, uint16_t opcode) {
@@ -422,12 +417,26 @@ void sdl_cleanup(SDLContext *sdl) {
 }
 
 void chip8_render(Chip8 *chip8, SDLContext *sdl) {
-    // Create a pixel buffer (RGBA format)
-    // Loop through chip8->display
-    // For each pixel: if it's on, set to white (0xFFFFFFFF), if off, set to black (0x00000000)
-    // Update the texture with the pixel buffer
-    // Copy texture to renderer
-    // Present the renderer
+    // Create a pixel buffer (RGBA format - 32 bits per pixel)
+    uint32_t pixels[DISPLAY_WIDTH * DISPLAY_HEIGHT];
+    
+    // Convert CHIP-8 display (1 bit per pixel) to RGBA pixels
+    for (int i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; i++) {
+        // White if pixel is on (1), black if off (0)
+        pixels[i] = chip8->display[i] ? 0xFFFFFFFF : 0x00000000;
+    }
+    
+    // Update the texture with our pixel data
+    SDL_UpdateTexture(sdl->texture, NULL, pixels, DISPLAY_WIDTH * sizeof(uint32_t));
+    
+    // Clear the renderer
+    SDL_RenderClear(sdl->renderer);
+    
+    // Copy texture to renderer (scales it to window size)
+    SDL_RenderCopy(sdl->renderer, sdl->texture, NULL, NULL);
+    
+    // Present the rendered frame
+    SDL_RenderPresent(sdl->renderer);
 }
 
 int main(int argc, char *argv[]) {
@@ -450,7 +459,90 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    // TODO: Main loop here
+    // Main emulation loop
+    int quit = 0;
+    SDL_Event event;
+    
+    // Timing variables
+    const int FPS = 60;
+    const int FRAME_DELAY = 1000 / FPS;  // milliseconds per frame
+    uint32_t frame_start;
+    int frame_time;
+    
+    while (!quit) {
+        frame_start = SDL_GetTicks();
+        
+        // Handle input events
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                quit = 1;
+            }
+            else if (event.type == SDL_KEYDOWN) {
+                // Map keyboard keys to CHIP-8 keypad
+                switch (event.key.keysym.sym) {
+                    case SDLK_1: chip8.keypad[0x1] = 1; break;
+                    case SDLK_2: chip8.keypad[0x2] = 1; break;
+                    case SDLK_3: chip8.keypad[0x3] = 1; break;
+                    case SDLK_4: chip8.keypad[0xC] = 1; break;
+                    
+                    case SDLK_q: chip8.keypad[0x4] = 1; break;
+                    case SDLK_w: chip8.keypad[0x5] = 1; break;
+                    case SDLK_e: chip8.keypad[0x6] = 1; break;
+                    case SDLK_r: chip8.keypad[0xD] = 1; break;
+                    
+                    case SDLK_a: chip8.keypad[0x7] = 1; break;
+                    case SDLK_s: chip8.keypad[0x8] = 1; break;
+                    case SDLK_d: chip8.keypad[0x9] = 1; break;
+                    case SDLK_f: chip8.keypad[0xE] = 1; break;
+                    
+                    case SDLK_z: chip8.keypad[0xA] = 1; break;
+                    case SDLK_x: chip8.keypad[0x0] = 1; break;
+                    case SDLK_c: chip8.keypad[0xB] = 1; break;
+                    case SDLK_v: chip8.keypad[0xF] = 1; break;
+                    
+                    case SDLK_ESCAPE: quit = 1; break;
+                }
+            }
+            else if (event.type == SDL_KEYUP) {
+                // Release keys
+                switch (event.key.keysym.sym) {
+                    case SDLK_1: chip8.keypad[0x1] = 0; break;
+                    case SDLK_2: chip8.keypad[0x2] = 0; break;
+                    case SDLK_3: chip8.keypad[0x3] = 0; break;
+                    case SDLK_4: chip8.keypad[0xC] = 0; break;
+                    
+                    case SDLK_q: chip8.keypad[0x4] = 0; break;
+                    case SDLK_w: chip8.keypad[0x5] = 0; break;
+                    case SDLK_e: chip8.keypad[0x6] = 0; break;
+                    case SDLK_r: chip8.keypad[0xD] = 0; break;
+                    
+                    case SDLK_a: chip8.keypad[0x7] = 0; break;
+                    case SDLK_s: chip8.keypad[0x8] = 0; break;
+                    case SDLK_d: chip8.keypad[0x9] = 0; break;
+                    case SDLK_f: chip8.keypad[0xE] = 0; break;
+                    
+                    case SDLK_z: chip8.keypad[0xA] = 0; break;
+                    case SDLK_x: chip8.keypad[0x0] = 0; break;
+                    case SDLK_c: chip8.keypad[0xB] = 0; break;
+                    case SDLK_v: chip8.keypad[0xF] = 0; break;
+                }
+            }
+        }
+        
+        // Execute several CPU cycles per frame (adjust for speed)
+        for (int i = 0; i < 10; i++) {
+            chip8_cycle(&chip8);
+        }
+        
+        // Render the display
+        chip8_render(&chip8, &sdl);
+        
+        // Cap frame rate
+        frame_time = SDL_GetTicks() - frame_start;
+        if (frame_time < FRAME_DELAY) {
+            SDL_Delay(FRAME_DELAY - frame_time);
+        }
+    }
     
     sdl_cleanup(&sdl);
     return 0;
